@@ -1,44 +1,51 @@
+import platform
 import psutil
 
-SYSTEM_KEYWORDS = [
-    "kworker", "irq", "migration", "rcu",
-    "systemd", "dbus", "gvfs", "pipewire",
-    "cups", "network", "bluetooth", "snap",
-    "tracker", "ibus", "xdg", "gsd", "avahi",
-    "polkit", "upower", "modem", "colord"
-]
-
-def is_user_app(proc):
-    try:
-        name = proc.name().lower()
-
-        # 1️⃣ Ignore system keywords
-        if any(word in name for word in SYSTEM_KEYWORDS):
-            return False
-
-        # 2️⃣ Ignore root processes
-        if proc.username() == "root":
-            return False
-
-        # 3️⃣ Ignore very tiny background tasks
-        if proc.memory_info().rss < 30 * 1024 * 1024:  # < 30 MB
-            return False
-
-        return True
-
-    except (psutil.NoSuchProcess, psutil.AccessDenied):
-        return False
-
+OS = platform.system()
 
 def get_user_apps():
-    apps = set()
+    """
+    Returns a list with the current foreground user application.
+    Works reliably on Windows & Xorg.
+    Returns empty list on Wayland (OS limitation).
+    """
 
-    for proc in psutil.process_iter():
-        if is_user_app(proc):
-            apps.add(proc.name())
+    try:
+        if OS == "Windows":
+            return _get_windows_app()
+        elif OS == "Linux":
+            return _get_linux_app()
+        else:
+            return []
+    except Exception:
+        return []
 
-    return sorted(apps)
+
+# ---------- WINDOWS ----------
+def _get_windows_app():
+    import win32gui
+    import win32process
+
+    hwnd = win32gui.GetForegroundWindow()
+    _, pid = win32process.GetWindowThreadProcessId(hwnd)
+    process = psutil.Process(pid)
+    return [process.name()]
 
 
-if __name__ == "__main__":
-    print(get_user_apps())
+# ---------- LINUX (Xorg only) ----------
+def _get_linux_app():
+    apps = []
+    for proc in psutil.process_iter(["pid", "name"]):
+        if proc.info["name"]:
+            name = proc.info["name"].lower()
+
+            # ignore background/system processes
+            if name.startswith((
+                "systemd", "kworker", "dbus", "gnome",
+                "pipewire", "ibus", "snap", "gvfs"
+            )):
+                continue
+
+            apps.append(proc.info["name"])
+
+    return apps[:1]   # only top app
