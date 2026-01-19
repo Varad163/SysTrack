@@ -7,37 +7,28 @@ from tracker.storage import update_today_usage, save_usage
 from utils.report_utils import get_week_daywise_usage
 from cli.display import show_week_table
 
-POLL_INTERVAL = 3  # seconds
-
+TICK_INTERVAL = 60  # 1 minute
 
 def run_tracker():
     tracker = TimeTracker()
-    last_app = None
-
-    print("Tracking started (Ctrl+C to stop)")
+    print("Tracking started (background safe)")
 
     try:
         while True:
-            current_app = get_active_app()
+            app = get_active_app()
+            if app:
+                tracker.set_active_app(app)
 
-            # Only switch when the focused app actually changes
-            if current_app and current_app != last_app:
-                tracker.switch_app(current_app)
-                last_app = current_app
+            tracker.tick()
+            update_today_usage(tracker.get_usage())
 
-            time.sleep(POLL_INTERVAL)
+            time.sleep(TICK_INTERVAL)
 
     except KeyboardInterrupt:
-        print("\nTracking stopped")
-
-    finally:
-        tracker.stop()
-        update_today_usage(tracker.get_usage())
-        print("Usage saved")
-
+        pass  # systemd will restart it automatically
 
 def main():
-    parser = argparse.ArgumentParser(description="Linux App Time Tracker")
+    parser = argparse.ArgumentParser()
     parser.add_argument("command", choices=["track", "week", "reset"])
     args = parser.parse_args()
 
@@ -51,7 +42,6 @@ def main():
     elif args.command == "reset":
         save_usage({})
         print("Data reset")
-
 
 if __name__ == "__main__":
     main()

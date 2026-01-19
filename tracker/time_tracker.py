@@ -3,27 +3,26 @@ import time
 class TimeTracker:
     def __init__(self):
         self.current_app = None
-        self.start_time = None
         self.usage = {}
+        self.last_tick = time.time()
 
-    def switch_app(self, app):
+    def set_active_app(self, app_name):
+        self.current_app = app_name
+
+    def tick(self):
+        """
+        Called every minute to add time to active app
+        """
+        if not self.current_app:
+            return
+
         now = time.time()
+        elapsed = now - self.last_tick
+        self.last_tick = now
 
-        if self.current_app:
-            elapsed = now - self.start_time
-            self.usage[self.current_app] = (
-                self.usage.get(self.current_app, 0) + elapsed
-            )
-
-        self.current_app = app
-        self.start_time = now
-
-    def stop(self):
-        if self.current_app:
-            elapsed = time.time() - self.start_time
-            self.usage[self.current_app] = (
-                self.usage.get(self.current_app, 0) + elapsed
-            )
+        self.usage[self.current_app] = (
+            self.usage.get(self.current_app, 0) + elapsed
+        )
 
     def get_usage(self):
         return self.usage
