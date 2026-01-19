@@ -1,13 +1,13 @@
 import time
 import argparse
 
-from tracker.activity_tracker import get_user_apps
+from tracker.activity_tracker import get_active_app
 from tracker.time_tracker import TimeTracker
 from tracker.storage import update_today_usage, save_usage
-from utils.report_utils import get_today_usage, get_week_daywise_usage
+from utils.report_utils import get_week_daywise_usage
 from cli.display import show_week_table
 
-POLL_INTERVAL = 3
+POLL_INTERVAL = 3  # seconds
 
 
 def run_tracker():
@@ -18,12 +18,12 @@ def run_tracker():
 
     try:
         while True:
-            apps = get_user_apps()
-            if apps:
-                app = apps[0]
-                if app != last_app:
-                    tracker.switch_app(app)
-                    last_app = app
+            current_app = get_active_app()
+
+            # Only switch when the focused app actually changes
+            if current_app and current_app != last_app:
+                tracker.switch_app(current_app)
+                last_app = current_app
 
             time.sleep(POLL_INTERVAL)
 
@@ -37,7 +37,7 @@ def run_tracker():
 
 
 def main():
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description="Linux App Time Tracker")
     parser.add_argument("command", choices=["track", "week", "reset"])
     args = parser.parse_args()
 

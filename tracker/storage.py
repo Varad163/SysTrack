@@ -1,6 +1,6 @@
 import json
-from pathlib import Path
 from datetime import date
+from pathlib import Path
 
 DATA_FILE = Path("data/usage.json")
 
@@ -17,10 +17,9 @@ def update_today_usage(today_usage):
     data = load_usage()
     today = date.today().isoformat()
 
-    if today not in data:
-        data[today] = {}
+    data.setdefault(today, {})
 
-    for app, seconds in today_usage.items():
-        data[today][app] = data[today].get(app, 0) + seconds
+    for app, sec in today_usage.items():
+        data[today][app] = data[today].get(app, 0) + sec
 
     save_usage(data)
